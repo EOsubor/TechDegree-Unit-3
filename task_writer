@@ -3,69 +3,88 @@ import re
 import datetime
 import sys
 import csv
+import time
 
 
 def clear_screen():
     os.system("cls" if os.name == 'nt' else 'clear')
 
 
-def menu():
-while True:
-    print("WORK LOG")
-    print("What would you like to do?")
-    print('''
-          a) Add new entry
-          b) Search in existing entries
-          c) Quit program
-''')
+def read_file():
+    with open('task_writer.csv', 'r') as csvfile:
+        names = ['Date', 'Title', 'Time Spent', 'Notes']
+        entry_reader = csv.DictReader(csvfile, fieldnames=names, delimiter=',')
 
-    choice = (input("> ")).lower()
-    if choice == 'a'.lower():
-        choice_a()
-    elif choice == 'b'.lower():
-        choice_b()
-    elif choice == 'c'.lower():
-        sys.exit()
+
+def entry_not_found():
+    if len(entry_found) < 1:
+        print("\nSorry, entry not found.")
+        time.sleep(1.5)
+        input("\nThe entry has been added. Press ENTER to return to the main menu
+        \n")
+        search_entry()
+
+
+def menu():
+    while True:
+        print("WORK LOG")
+        print("What would you like to do?")
+        print('''
+              a) Add new entry
+              b) Search in existing entries
+              c) Quit program
+    ''')
+
+        choice = (input("> ")).lower()
+        if choice == 'a'.lower():
+            add_entry()
+        elif choice == 'b'.lower():
+            search_entry()
+        elif choice == 'c'.lower():
+            sys.exit()
 
 
 def results_display(row):
-    '''Prints entry in uniform format'''
+    '''Prints entry in readable format'''
     print("\nDate: " + row['Date'])
     print("Title: " + row['Title'])
     print("Time Spent: " + row['Time Spent'])
     print("Notes: " + row['Notes'])
 
 
-def choice_a():
+def add_entry():
     clear_screen()
-
     print("Date of task")
 
     while True:
         entry_date = input("Please use DD/MM/YYYY:\n")
         try:
-            entry_date = datetime.datetime.strptime(entry_date, "%d/%m/%Y").strftime("%d/%m/%Y")
-            break
+            entry_date = datetime.datetime.strptime(entry_date, "%d/%m/%Y")\
+            .strftime("%d/%m/%Y")
         except ValueError:
             print("Error, invalid entry. Date must be format dd/mm/yyyy ")
-
+        else:
+            break
     clear_screen()
 
     task_title = input("Title of the task:\n")
-
     clear_screen()
 
     while True:
+        time_spent = input("Time spent (Rounded minutes):\n")
         try:
-            time_spent = abs(int(input("Time spent (Rounded minutes):\n")))
+            time_spent = abs(int(input(time_spent)))
         except ValueError:
             print("Error, invalid entry. Please try again!")
         else:
             break
-
     clear_screen()
 
-    optional_notes = input("Notes (Optional):\n")
+    optional_notes = input("Notes(Optional):\n")
+    if optional_notes:
+        optional_notes = optional_notes
+    else:
+        optional_notes = ''
 
     clear_screen()
 
@@ -73,42 +92,49 @@ def choice_a():
 
     clear_screen()
 
-    with open('task_writer.csv', 'w') as csv_file:
-        fieldnames = ['Date', 'Title', 'Time Spent', 'Notes']
-        entry_writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+    with open('task_writer.csv', 'a') as csvfile:
+        names = ['Date', 'Title', 'Time Spent', 'Notes']
+        entry_writer = csv.DictWriter(csvfile, fieldnames=names)
 
-        entry_writer.writeheader()
-        entry_writer.writerow({'Date:' + entry_date,
-                               'Title:' + task_title,
-                               'Time Spent:' + time_spent,
-                               'Notes:' + optional_notes})
+        # entry_writer.writeheader()
+        entry_writer.writerow({'Date': entry_date,
+                               'Title': task_title,
+                               'Time Spent': str(time_spent),
+                               'Notes': optional_notes})
 
 
-def choice_b():
+def search_menu_return():
+    print("\n\nEnter 'R' to return to search menu")
+    input_choice = input("> ")
+    if input_choice == 'r'.upper():
+        search_entry()
+
+
+def search_entry():
     clear_screen()
     print('''Do you want to search by:
           a) Exact Date
           b) Range of dates
-          c) Exact Search
+          c) Keyword Search
           d) Regex Pattern
           e) Time Spent
           f) Return to menu
 ''')
-    choice_b = (input("> ")).lower()
-    if choice_b == 'a'.lower():
+    search_method = (input("> ")).lower()
+    if search_method == 'a'.lower():
         exact_date()
-    elif choice_b == 'b'.lower():
+    elif search_method == 'b'.lower():
         date_range()
-    elif choice_b == 'c'.lower():
+    elif search_method == 'c'.lower():
         keyword_search()
-    elif choice_b == 'd'.lower():
+    elif search_method == 'd'.lower():
         time_search()
-    elif choice_b == 'e'.lower():
-        regex_patter()
-    elif choice_b == 'f'.lower():
+    elif search_method == 'e'.lower():
+        regex_pattern()
+    elif search_method == 'f'.lower():
         menu()
     else:
-        "Error, invalid entry. Please try again"
+        print("Error, invalid entry. Please try again")
 
 
 def exact_date():
@@ -116,26 +142,24 @@ def exact_date():
     entry_found = []
     clear_screen()
     print("Enter the date")
+
     while True:
         date_choice = input("Please use DD/MM/YYYY:\n")
         try:
-            date_choice = datetime.datetime.strptime(date_choice, "%d/%m/%Y")
+            date_choice = datetime.datetime.strptime(date_choice, "%d/%m/%Y")\
+            .strftime("%d/%m/%Y")
         except ValueError:
             print("Error, invalid entry. Not a valid date.")
         else:
             break
     clear_screen()
-    with open('task_writer.csv', 'r') as csvfile:
-        names = ['Date', 'Title', 'Time Spent', 'Notes']
-        entry_reader = csv.DictReader(csvfile, fieldnames=names, delimiter=',')
-
+    read_file()
         for row in entry_reader:
             if date_choice == row['Date']:
                 entry_found.append(row['Date'])
                 results_display(row)
-        if len(entry_found) < 1:
-            print("\nSorry, entry for requested date not found.")
-            choice_b()
+                search_menu_return()
+        entry_not_found()
 
 
 def date_range():
@@ -143,21 +167,27 @@ def date_range():
     entry_found = []
     clear_screen()
     print("Enter the dates range")
-    date_input1 = input("Please input start date in format DD\MM\YYYY:\n")
-    date_input1 = datetime.datetime.strptime(date_input1)
-    date_input2 = input("Please input end date in format DD\MM\YYYY:\n")
-    date_input2 = datetime.datetime.strptime(date_input2)
-
-    with open('task_writer.csv', 'r') as csvfile:
-        names = ['Date', 'Title', 'Time Spent', 'Notes']
-        entry_reader = csv.DictReader(csvfile, fieldnames=names, delimiter=',')
+    time.sleep(1.2)
+    clear_screen()
+    while True:
+        date_input1 = input("\nPlease input start date in format DD\MM\YYYY:\n")
+        date_input2 = input("Please input end date in format DD\MM\YYYY:\n")
+        try:
+            date_input1 = datetime.datetime.strptime(date_input1, "%d/%m/%Y")\
+            .strftime("%d/%m/%Y")
+            date_input2 = datetime.datetime.strptime(date_input2, "%d/%m/%Y")\
+            .strftime("%d/%m/%Y")
+        except ValueError:
+            print("Error, invalid entry. Not a valid date.")
+        else:
+            break
+    read_file()
         for row in entry_reader:
             if date_input1 < row['Date'] < date_input2:
                 entry_found.append(row['Date'])
                 results_display(row)
-        if len(entry_found) < 1:
-            print("\nSorry, entry for requested date range not found.")
-            choice_b()
+                search_menu_return()
+        entry_not_found()
 
 
 def keyword_search():
@@ -166,42 +196,43 @@ def keyword_search():
     clear_screen()
     exact_search = input("Please enter search keyword:\n")
     clear_screen()
-    with open('task_writer.csv', 'r') as csvfile:
-        names = ['Date', 'Title', 'Time Spent', 'Notes']
-        entry_reader = csv.DictReader(csvfile, fieldnames=names, delimiter=',')
+    read_file()
         for row in entry_reader:
-            if exact_search.lower() == row['Title'].lower() or row['Notes'].lower():
+            if exact_search.lower() in [row['Title'].lower(), row['Notes'].lower()]:
                 entry_found.append(row['Title'])
                 results_display(row)
-        if len(entry_found) < 1:
-            print("\nSorry, keyword not found.")
-            choice_b()
+                search_menu_return()
+        entry_not_found()
 
 
 def time_search():
     '''Search based on task time'''
     entry_found = []
     clear_screen()
-    time_search = input("Please enter search time:\n")
+    while True:
+        try:
+            time_search = abs(int(input("Please enter search time:\n")))
+        except ValueError:
+            print("Error, invalid entry. Please try again!")
+        else:
+            break
     clear_screen()
-    with open('task_writer.csv', 'r') as csvfile:
-        names = ['Date', 'Title', 'Time Spent', 'Notes']
-        entry_reader = csv.DictReader(csvfile, fieldnames=names, delimiter=',')
+    read_file()
         for row in entry_reader:
             if time_search == row['Time Spent']:
                 entry_found.append(row['Time Spent'])
                 results_display(row)
-        if len(entry_found) < 1:
-            print("\nSorry, entry for requested time not found.")
-            choice_b()
+                search_menu_return()
+        entry_not_found()
 
 
 def regex_pattern():
     '''Search based on Regex pattern'''
     entry_found = []
     clear_screen()
-    regex_search = input("Please enter Regex search pattern:\n")
+
     while True:
+        regex_search = input("Please enter Regex search pattern:\n")
         try:
             regex_search = re.compile(r'{}'.format(regex_search), re.X | re.M)
         except re.error:
@@ -209,16 +240,12 @@ def regex_pattern():
         else:
             break
     clear_screen()
-    with open('task_writer.csv', 'r') as csvfile:
-        names = ['Date', 'Title', 'Time Spent', 'Notes']
-        entry_reader = csv.DictReader(csvfile, fieldnames=names, delimiter=',')
+    read_file()
         for row in entry_reader:
             if regex_search == re.findall(regex_search, entry_reader):
                 entry_found.append(row['Title'])
                 results_display(row)
-        if len(entry_found) < 1:
-            print("\nSorry, entry for requested time not found.")
-            choice_b()
+        entry_not_found()
 
 if __name__ == '__main__':
         menu()
